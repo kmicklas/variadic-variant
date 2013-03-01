@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <typeinfo>
 
 namespace variant {
 
@@ -33,7 +34,7 @@ template<int N>
 struct storage<N> {
 	void del(int n) {
 		throw std::runtime_error(
-			"asghasgh"
+			"Internal error: variant tag is invalid."
 		);
 	}
 };
@@ -75,7 +76,7 @@ struct type_info<> {
 template<typename... Types>
 class Variant {
 	static_assert(impl::type_info<Types...>::no_reference_types, "Reference types are not permitted in variant.");
-	static_assert(impl::type_info<Types...>::no_duplicates, "duplicates in types");
+	static_assert(impl::type_info<Types...>::no_duplicates, "Variant type arguments contain duplicate types.");
 	
 	int t;
 	impl::storage<0, Types...> s;
@@ -89,7 +90,10 @@ class Variant {
 public:
 	template<typename X>
 	Variant(const X& v) : t(impl::position<X, Types...>::pos) {
-		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
+		static_assert(
+			impl::position<X, Types...>::pos != -1,
+			"Type not in variant."
+		);
 		init(v);
 	}
 	~Variant() {
@@ -97,19 +101,25 @@ public:
 	}
 	template<typename X>
 	void operator=(const X& v) {
-		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
+		static_assert(
+			impl::position<X, Types...>::pos != -1,
+			"Type not in variant."
+		);
 		s.del(t);
 		t = impl::position<X, Types...>::pos;
 		init(v);
 	}
 	template<typename X>
 	X& get() /* const */ {
-		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
+		static_assert(
+			impl::position<X, Types...>::pos != -1,
+			"Type not in variant."
+		);
 		if(t == impl::position<X, Types...>::pos) {
 			return *reinterpret_cast<X*>(&s);
 		} else {
 			throw std::runtime_error(
-				"asghasgh"
+				std::string("Variant does not contain value of type ") + typeid(X).name()
 			);
 		}
 	}
