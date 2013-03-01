@@ -1,8 +1,12 @@
 #include <string>
 #include <iostream>
-#include <assert.h>
 
 #include "variant.h"
+
+#define BOOST_TEST_MODULE VariantTest
+
+#define BOOST_TEST_DYN_LINK
+#include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace variant;
@@ -17,44 +21,33 @@ struct has_destructor {
 	}
 };
 
-void test_assignment() {
+BOOST_AUTO_TEST_CASE(assignment) {
 	Variant<int, bool, double, string> v(4);
-	assert(v.get<int>() == 4);
+	BOOST_CHECK(v.get<int>() == 4);
 	
 	v = string("a");
-	assert(v.get<string>() == "a");
+	BOOST_CHECK(v.get<string>() == "a");
 }
-void test_tag() {
+BOOST_AUTO_TEST_CASE(tag) {
 	Variant<int, bool, double, string> v(4);
-	assert(v.tag() == 0);
+	BOOST_CHECK(v.tag() == 0);
 	
 	v = string("a");
-	assert(v.tag() == 3);
+	BOOST_CHECK(v.tag() == 3);
 }
-void test_variant_destructor() {
+BOOST_AUTO_TEST_CASE(variant_destructor) {
 	bool destructed = false; // has our object been destructed?
 	{
 		Variant<int, has_destructor> v = has_destructor(destructed);
 	}
-	assert(destructed);
+	BOOST_CHECK(destructed);
 }
-void test_assignment_destruction() {
+BOOST_AUTO_TEST_CASE(assignment_destruction) {
 	bool destructed = false; // has our object been destructed?
 	Variant<int, has_destructor> v = has_destructor(destructed);
 	
 	v = 5;
 	
-	assert(destructed);
-}
-
-
-int main(int argc, char *argv[]) {
-	test_assignment();
-	test_tag();
-	test_variant_destructor();
-	test_assignment_destruction();
-	
-	cout << "All tests passed." << endl;
-	return 0;
+	BOOST_CHECK(destructed);
 }
 
