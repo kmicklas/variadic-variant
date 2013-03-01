@@ -86,12 +86,14 @@ class Variant {
 	void init(const X& x) {
 		new(&s) X(x);
 	}
-	
 public:
 	template<typename X>
 	Variant(const X& v) : t(impl::position<X, Types...>::pos) {
 		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
 		init(v);
+	}
+	~Variant() {
+		s.del(t);
 	}
 	template<typename X>
 	void operator=(const X& v) {

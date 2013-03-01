@@ -17,18 +17,42 @@ struct has_destructor {
 	}
 };
 
-int main(int argc, char *argv[]) {
+void test_assignment() {
+	Variant<int, bool, double, string> v(4);
+	assert(v.get<int>() == 4);
+	
+	v = string("a");
+	assert(v.get<string>() == "a");
+}
+void test_tag() {
+	Variant<int, bool, double, string> v(4);
+	assert(v.tag() == 0);
+	
+	v = string("a");
+	assert(v.tag() == 3);
+}
+void test_variant_destructor() {
 	bool destructed = false; // has our object been destructed?
+	{
+		Variant<int, has_destructor> v = has_destructor(destructed);
+	}
+	assert(destructed);
+}
+void test_assignment_destruction() {
+	bool destructed = false; // has our object been destructed?
+	Variant<int, has_destructor> v = has_destructor(destructed);
 	
-	Variant<int, bool, double, string, has_destructor> test(4);
-	assert(test.tag() == 0);
-	assert(test.get<int>() == 4);
+	v = 5;
 	
-	test = has_destructor(destructed);
-	test = string("a");
-	assert(destructed); // assignment should call destructor of previous object
-	assert(test.tag() == 3);
-	assert(test.get<string>() == "a");
+	assert(destructed);
+}
+
+
+int main(int argc, char *argv[]) {
+	test_assignment();
+	test_tag();
+	test_variant_destructor();
+	test_assignment_destruction();
 	
 	cout << "All tests passed." << endl;
 	return 0;
