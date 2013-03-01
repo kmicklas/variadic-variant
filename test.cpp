@@ -5,9 +5,10 @@
 #include "variant.h"
 
 using namespace std;
+using namespace variant;
 
 int main(int argc, char *argv[]) {
-	variant<int, bool, double, string> test(4);
+	Variant<int, bool, double, string> test(4);
 	assert(test.tag() == 0);
 	assert(test.get<int>() == 4);
 	

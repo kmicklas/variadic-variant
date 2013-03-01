@@ -1,5 +1,9 @@
 #include <stdexcept>
 
+namespace variant {
+
+namespace impl {
+
 template<int N, typename... Ts>
 struct storage;
 
@@ -70,32 +74,34 @@ struct position<X, N, T, Ts...> {
 	static const int pos = position<X, N + 1, Ts...>::pos;
 };
 
+} // namespace impl
+
 template<typename... Types>
-struct variant {
-	static_assert(storage<0, Types...>::no_reference_types, "Reference types are not permitted in variant.");
-	static_assert(storage<0, Types...>::no_duplicates, "duplicates in types");
+struct Variant {
+	static_assert(impl::storage<0, Types...>::no_reference_types, "Reference types are not permitted in variant.");
+	static_assert(impl::storage<0, Types...>::no_duplicates, "duplicates in types");
 	
 	int t;
-	storage<0, Types...> s;
+	impl::storage<0, Types...> s;
 	
-	variant() = delete;
+	Variant() = delete;
 	
 	template<typename X>
-	variant(const X& v) : t(position<X, 0, Types...>::pos) {
-		static_assert(position<X, 0, Types...>::pos != -1, "not in variant");
+	Variant(const X& v) : t(impl::position<X, 0, Types...>::pos) {
+		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
 		s.init(v);
 	}
 	template<typename X>
 	void operator=(const X& v) {
-		static_assert(position<X, 0, Types...>::pos != -1, "not in variant");
+		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
 		s.del(t);
-		t = position<X, 0, Types...>::pos;
+		t = impl::position<X, 0, Types...>::pos;
 		s.init(v);
 	}
 	template<typename X>
 	X& get() /* const */ {
-		static_assert(position<X, 0, Types...>::pos != -1, "not in variant");
-		if(t == position<X, 0, Types...>::pos) {
+		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
+		if(t == impl::position<X, 0, Types...>::pos) {
 			return *reinterpret_cast<X*>(&s);
 		} else {
 			throw std::runtime_error(
@@ -105,4 +111,6 @@ struct variant {
 	}
 	int tag() {return t;}
 };
+
+} // namespace variant
 
