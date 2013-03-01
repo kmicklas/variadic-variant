@@ -16,11 +16,6 @@ struct type_info;
 
 template<int N, typename T, typename... Ts>
 struct storage<N, T&, Ts...> {
-	void init(const T& v) {}
-	
-	template<typename X>
-	void init(const X& v) {}
-	
 	void del(int n) {}
 };
 template<int N, typename T, typename... Ts>
@@ -29,14 +24,6 @@ struct storage<N, T, Ts...> {
 		char first[sizeof(T)];
 		storage<N + 1, Ts...> rest;
 	};
-	
-	void init(const T& v) {
-		new(first) T(v);
-	}
-	
-	template<typename X>
-	void init(const X& v) {rest.init(v);}
-	
 	void del(int n) {
 		if(n == N) reinterpret_cast<T*>(first)->~T();
 		else rest.del(n);
@@ -44,9 +31,6 @@ struct storage<N, T, Ts...> {
 };
 template<int N>
 struct storage<N> {
-	template<typename X>
-	void init(const X& v) {}
-	
 	void del(int n) {
 		throw std::runtime_error(
 			"asghasgh"
@@ -89,7 +73,7 @@ struct type_info<> {
 } // namespace impl
 
 template<typename... Types>
-struct Variant {
+class Variant {
 	static_assert(impl::type_info<Types...>::no_reference_types, "Reference types are not permitted in variant.");
 	static_assert(impl::type_info<Types...>::no_duplicates, "duplicates in types");
 	
@@ -99,16 +83,22 @@ struct Variant {
 	Variant() = delete;
 	
 	template<typename X>
+	void init(const X& x) {
+		new(&s) X(x);
+	}
+	
+public:
+	template<typename X>
 	Variant(const X& v) : t(impl::position<X, Types...>::pos) {
 		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
-		s.init(v);
+		init(v);
 	}
 	template<typename X>
 	void operator=(const X& v) {
 		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
 		s.del(t);
 		t = impl::position<X, Types...>::pos;
-		s.init(v);
+		init(v);
 	}
 	template<typename X>
 	X& get() /* const */ {
