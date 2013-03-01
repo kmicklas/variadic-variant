@@ -2,18 +2,19 @@
 
 namespace variant {
 
+// Implementation details, the user should not import this:
 namespace impl {
 
 template<int N, typename... Ts>
 struct storage;
 
-template<typename X, int N, typename... Ts>
+template<typename X, typename... Ts>
 struct position;
 
 template<int N, typename T, typename... Ts>
 struct storage<N, T&, Ts...> {
 	static const bool no_reference_types = false;
-	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, 0, Ts...>::pos == -1;
+	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, Ts...>::pos == -1;
 	
 	void init(const T& v) {}
 	
@@ -25,7 +26,7 @@ struct storage<N, T&, Ts...> {
 template<int N, typename T, typename... Ts>
 struct storage<N, T, Ts...> {
 	static const bool no_reference_types = storage<N + 1, Ts...>::no_reference_types;
-	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, 0, Ts...>::pos == -1;
+	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, Ts...>::pos == -1;
 	
 	union {
 		char first[sizeof(T)];
@@ -59,19 +60,17 @@ struct storage<N> {
 	}
 };
 
-template<typename X, int N>
-struct position<X, N> {
+template<typename X>
+struct position<X> {
 	static const int pos = -1;
 };
-
-template<typename X, int N, typename... Ts>
-struct position<X, N, X, Ts...> {
-	static const int pos = N;
+template<typename X, typename... Ts>
+struct position<X, X, Ts...> {
+	static const int pos = 0;
 };
-
-template<typename X, int N, typename T, typename... Ts>
-struct position<X, N, T, Ts...> {
-	static const int pos = position<X, N + 1, Ts...>::pos;
+template<typename X, typename T, typename... Ts>
+struct position<X, T, Ts...> {
+	static const int pos = position<X, Ts...>::pos != -1 ? position<X, Ts...>::pos + 1 : -1;
 };
 
 } // namespace impl
@@ -87,21 +86,21 @@ struct Variant {
 	Variant() = delete;
 	
 	template<typename X>
-	Variant(const X& v) : t(impl::position<X, 0, Types...>::pos) {
-		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
+	Variant(const X& v) : t(impl::position<X, Types...>::pos) {
+		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
 		s.init(v);
 	}
 	template<typename X>
 	void operator=(const X& v) {
-		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
+		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
 		s.del(t);
-		t = impl::position<X, 0, Types...>::pos;
+		t = impl::position<X, Types...>::pos;
 		s.init(v);
 	}
 	template<typename X>
 	X& get() /* const */ {
-		static_assert(impl::position<X, 0, Types...>::pos != -1, "not in variant");
-		if(t == impl::position<X, 0, Types...>::pos) {
+		static_assert(impl::position<X, Types...>::pos != -1, "not in variant");
+		if(t == impl::position<X, Types...>::pos) {
 			return *reinterpret_cast<X*>(&s);
 		} else {
 			throw std::runtime_error(
