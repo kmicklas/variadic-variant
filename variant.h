@@ -11,11 +11,11 @@ struct storage;
 template<typename X, typename... Ts>
 struct position;
 
+template<typename... Ts>
+struct type_info;
+
 template<int N, typename T, typename... Ts>
 struct storage<N, T&, Ts...> {
-	static const bool no_reference_types = false;
-	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, Ts...>::pos == -1;
-	
 	void init(const T& v) {}
 	
 	template<typename X>
@@ -25,9 +25,6 @@ struct storage<N, T&, Ts...> {
 };
 template<int N, typename T, typename... Ts>
 struct storage<N, T, Ts...> {
-	static const bool no_reference_types = storage<N + 1, Ts...>::no_reference_types;
-	static const bool no_duplicates = storage<N + 1, Ts...>::no_duplicates && position<T, Ts...>::pos == -1;
-	
 	union {
 		char first[sizeof(T)];
 		storage<N + 1, Ts...> rest;
@@ -47,9 +44,6 @@ struct storage<N, T, Ts...> {
 };
 template<int N>
 struct storage<N> {
-	static const bool no_reference_types = true;
-	static const bool no_duplicates = true;
-	
 	template<typename X>
 	void init(const X& v) {}
 	
@@ -73,12 +67,31 @@ struct position<X, T, Ts...> {
 	static const int pos = position<X, Ts...>::pos != -1 ? position<X, Ts...>::pos + 1 : -1;
 };
 
+template<typename T, typename... Ts>
+struct type_info<T&, Ts...> {
+	static const bool no_reference_types = false;
+	static const bool no_duplicates = position<T, Ts...>::pos == -1 && type_info<Ts...>::no_duplicates;
+	static const size_t size = type_info<Ts...>::size > sizeof(T&) ? type_info<Ts...>::size : sizeof(T&);
+};
+template<typename T, typename... Ts>
+struct type_info<T, Ts...> {
+	static const bool no_reference_types = type_info<Ts...>::no_reference_types;
+	static const bool no_duplicates = position<T, Ts...>::pos == -1 && type_info<Ts...>::no_duplicates;
+	static const size_t size = type_info<Ts...>::size > sizeof(T) ? type_info<Ts...>::size : sizeof(T&);
+};
+template<>
+struct type_info<> {
+	static const bool no_reference_types = true;
+	static const bool no_duplicates = true;
+	static const size_t size = 0;
+};
+
 } // namespace impl
 
 template<typename... Types>
 struct Variant {
-	static_assert(impl::storage<0, Types...>::no_reference_types, "Reference types are not permitted in variant.");
-	static_assert(impl::storage<0, Types...>::no_duplicates, "duplicates in types");
+	static_assert(impl::type_info<Types...>::no_reference_types, "Reference types are not permitted in variant.");
+	static_assert(impl::type_info<Types...>::no_duplicates, "duplicates in types");
 	
 	int t;
 	impl::storage<0, Types...> s;
