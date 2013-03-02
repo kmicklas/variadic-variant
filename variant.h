@@ -7,7 +7,7 @@ namespace variant {
 namespace impl {
 
 template<int N, typename... Ts>
-struct storage;
+struct storage_ops;
 
 template<typename X, typename... Ts>
 struct position;
@@ -16,23 +16,19 @@ template<typename... Ts>
 struct type_info;
 
 template<int N, typename T, typename... Ts>
-struct storage<N, T&, Ts...> {
-	void del(int n) {}
+struct storage_ops<N, T&, Ts...> {
+	void del(int n, void *data) {}
 };
 template<int N, typename T, typename... Ts>
-struct storage<N, T, Ts...> {
-	union {
-		char first[sizeof(T)];
-		storage<N + 1, Ts...> rest;
-	};
-	void del(int n) {
-		if(n == N) reinterpret_cast<T*>(first)->~T();
-		else rest.del(n);
+struct storage_ops<N, T, Ts...> {
+	static void del(int n, void *data) {
+		if(n == N) reinterpret_cast<T*>(data)->~T();
+		else storage_ops<N + 1, Ts...>::del(n, data);
 	}
 };
 template<int N>
-struct storage<N> {
-	void del(int n) {
+struct storage_ops<N> {
+	static void del(int n, void *data) {
 		throw std::runtime_error(
 			"Internal error: variant tag is invalid."
 		);
@@ -78,18 +74,18 @@ class Variant {
 	static_assert(impl::type_info<Types...>::no_reference_types, "Reference types are not permitted in variant.");
 	static_assert(impl::type_info<Types...>::no_duplicates, "Variant type arguments contain duplicate types.");
 	
-	int t;
-	impl::storage<0, Types...> s;
+	int tag;
+	char storage[impl::type_info<Types...>::size];
 	
 	Variant() = delete;
 	
 	template<typename X>
 	void init(const X& x) {
-		new(&s) X(x);
+		new(storage) X(x);
 	}
 public:
 	template<typename X>
-	Variant(const X& v) : t(impl::position<X, Types...>::pos) {
+	Variant(const X& v) : tag(impl::position<X, Types...>::pos) {
 		static_assert(
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
@@ -97,7 +93,7 @@ public:
 		init(v);
 	}
 	~Variant() {
-		s.del(t);
+		impl::storage_ops<0, Types...>::del(tag, storage);
 	}
 	template<typename X>
 	void operator=(const X& v) {
@@ -105,8 +101,8 @@ public:
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
 		);
-		s.del(t);
-		t = impl::position<X, Types...>::pos;
+		this->~Variant();
+		tag = impl::position<X, Types...>::pos;
 		init(v);
 	}
 	template<typename X>
@@ -115,8 +111,8 @@ public:
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
 		);
-		if(t == impl::position<X, Types...>::pos) {
-			return *reinterpret_cast<X*>(&s);
+		if(tag == impl::position<X, Types...>::pos) {
+			return *reinterpret_cast<X*>(&storage);
 		} else {
 			throw std::runtime_error(
 				std::string("Variant does not contain value of type ") + typeid(X).name()
@@ -129,15 +125,15 @@ public:
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
 		);
-		if(t == impl::position<X, Types...>::pos) {
-			return *reinterpret_cast<const X*>(&s);
+		if(tag == impl::position<X, Types...>::pos) {
+			return *reinterpret_cast<const X*>(&storage);
 		} else {
 			throw std::runtime_error(
 				std::string("Variant does not contain value of type ") + typeid(X).name()
 			);
 		}
 	}
-	int tag() const {return t;}
+	int which() const {return tag;}
 };
 
 } // namespace variant

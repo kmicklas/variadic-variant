@@ -28,12 +28,12 @@ BOOST_AUTO_TEST_CASE(assignment) {
 	v = string("a");
 	BOOST_CHECK(v.get<string>() == "a");
 }
-BOOST_AUTO_TEST_CASE(tag) {
+BOOST_AUTO_TEST_CASE(which) {
 	Variant<int, bool, double, string> v(4);
-	BOOST_CHECK(v.tag() == 0);
+	BOOST_CHECK(v.which() == 0);
 	
 	v = string("a");
-	BOOST_CHECK(v.tag() == 3);
+	BOOST_CHECK(v.which() == 3);
 }
 BOOST_AUTO_TEST_CASE(variant_destructor) {
 	bool destructed = false; // has our object been destructed?
