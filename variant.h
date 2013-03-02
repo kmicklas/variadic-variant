@@ -110,7 +110,7 @@ public:
 		init(v);
 	}
 	template<typename X>
-	X& get() /* const */ {
+	X& get() {
 		static_assert(
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
@@ -123,7 +123,21 @@ public:
 			);
 		}
 	}
-	int tag() {return t;}
+	template<typename X>
+	const X& get() const {
+		static_assert(
+			impl::position<X, Types...>::pos != -1,
+			"Type not in variant."
+		);
+		if(t == impl::position<X, Types...>::pos) {
+			return *reinterpret_cast<const X*>(&s);
+		} else {
+			throw std::runtime_error(
+				std::string("Variant does not contain value of type ") + typeid(X).name()
+			);
+		}
+	}
+	int tag() const {return t;}
 };
 
 } // namespace variant
