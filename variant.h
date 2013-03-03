@@ -17,7 +17,10 @@ struct type_info;
 
 template<int N, typename T, typename... Ts>
 struct storage_ops<N, T&, Ts...> {
-	void del(int n, void *data) {}
+	static void del(int n, void *data) {}
+	
+	template<typename Visitor>
+	static typename Visitor::result_type apply(int n, void *data, Visitor& v) {}
 };
 template<int N, typename T, typename... Ts>
 struct storage_ops<N, T, Ts...> {
@@ -25,10 +28,21 @@ struct storage_ops<N, T, Ts...> {
 		if(n == N) reinterpret_cast<T*>(data)->~T();
 		else storage_ops<N + 1, Ts...>::del(n, data);
 	}
+	template<typename Visitor>
+	static typename Visitor::result_type apply(int n, void *data, Visitor& v) {
+		if(n == N) return v(*reinterpret_cast<T*>(data));
+		else return storage_ops<N + 1, Ts...>::apply(n, data, v);
+	}
 };
 template<int N>
 struct storage_ops<N> {
 	static void del(int n, void *data) {
+		throw std::runtime_error(
+			"Internal error: variant tag is invalid."
+		);
+	}
+	template<typename Visitor>
+	static typename Visitor::result_type apply(int n, void *data, Visitor& v) {
 		throw std::runtime_error(
 			"Internal error: variant tag is invalid."
 		);
@@ -112,7 +126,7 @@ public:
 			"Type not in variant."
 		);
 		if(tag == impl::position<X, Types...>::pos) {
-			return *reinterpret_cast<X*>(&storage);
+			return *reinterpret_cast<X*>(storage);
 		} else {
 			throw std::runtime_error(
 				std::string("Variant does not contain value of type ") + typeid(X).name()
@@ -126,14 +140,23 @@ public:
 			"Type not in variant."
 		);
 		if(tag == impl::position<X, Types...>::pos) {
-			return *reinterpret_cast<const X*>(&storage);
+			return *reinterpret_cast<const X*>(storage);
 		} else {
 			throw std::runtime_error(
 				std::string("Variant does not contain value of type ") + typeid(X).name()
 			);
 		}
 	}
+	template<typename Visitor>
+	typename Visitor::result_type visit(Visitor& v) {
+		return impl::storage_ops<0, Types...>::apply(tag, storage, v);
+	}
+	
 	int which() const {return tag;}
+};
+template<typename Result>
+struct Visitor {
+	typedef Result result_type;
 };
 
 } // namespace variant
