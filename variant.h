@@ -95,11 +95,12 @@ class Variant {
 	
 	template<typename X>
 	void init(const X& x) {
+		tag = impl::position<X, Types...>::pos;
 		new(storage) X(x);
 	}
 public:
 	template<typename X>
-	Variant(const X& v) : tag(impl::position<X, Types...>::pos) {
+	Variant(const X& v) {
 		static_assert(
 			impl::position<X, Types...>::pos != -1,
 			"Type not in variant."
@@ -116,7 +117,6 @@ public:
 			"Type not in variant."
 		);
 		this->~Variant();
-		tag = impl::position<X, Types...>::pos;
 		init(v);
 	}
 	template<typename X>
