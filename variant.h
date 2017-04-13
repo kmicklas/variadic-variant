@@ -151,6 +151,14 @@ public:
 			);
 		}
 	}
+	template<typename X>
+	bool is() const {
+		static_assert(
+			impl::position<X, Types...>::pos != -1,
+			"Type not in variant."
+		);
+		return tag == impl::position<X, Types...>::pos;
+	}
 	template<typename visitor>
 	typename visitor::result_type visit(visitor& v) {
 		return impl::storage_ops<0, Types...>::apply(tag, storage, v);
